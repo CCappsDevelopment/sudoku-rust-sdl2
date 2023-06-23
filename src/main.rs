@@ -21,7 +21,7 @@ struct GameState {
     board_initialized: bool,
     puzzle_solved: bool,
     difficulty: board_generator::BoardDifficulty,
-    invalid_positions: Vec<(i32, i32)>,
+    invalid_positions: Vec<(i32, i32, i32)>,
 }
 
 impl GameState {
@@ -52,14 +52,22 @@ impl GameState {
     
     pub fn is_valid_move(&self, board: &Vec<Vec<Option<i32>>>, row: usize, col: usize, val: i32) -> bool {
         // Check if the value is already in the row
+        println!("row:{}, col:{}, val:{}", row, col, val);
+        if board[row][col] == None {
+            return true;
+        }
+
         for i in 0..9 {
-            if board[row][i] == Some(val) {
+            println!("board[{}][{}]:{:?}", row, i, board[row][i]);
+            if board[row][i] == Some(val) && i != col {
+                print!("found match in row:{}", i);
                 return false;
             }
         }
         // Check if the value is already in the column
         for i in 0..9 {
-            if board[i][col] == Some(val) {
+            if board[i][col] == Some(val) && i != row {
+                print!("found match in col:{}", i);
                 return false;
             }
         }
@@ -68,7 +76,8 @@ impl GameState {
         let square_col = col - col % 3;
         for i in square_row..square_row + 3 {
             for j in square_col..square_col + 3 {
-                if board[i][j] == Some(val) {
+                if board[i][j] == Some(val) && i != row && j != col{
+                    print!("found match in square:{},{}", i, j);
                     return false;
                 }
             }
@@ -161,6 +170,7 @@ fn process_events(game_state: &mut GameState, event_pump: &mut sdl2::EventPump) 
 
                     if  game_state.board_initialized {
                         game_state.board =  game_state.solved_board.clone();
+                        game_state.invalid_positions = Vec::new();
                     }
                 }
             },
@@ -180,7 +190,10 @@ fn process_events(game_state: &mut GameState, event_pump: &mut sdl2::EventPump) 
                         Keycode::Num9 | Keycode::Kp9 =>  game_state.board[x as usize][y as usize] = Some(9),
                         Keycode::Backspace | Keycode::Delete => {
                             if game_state.board_initialized {
-                                game_state.board[x as usize][y as usize] = None
+                                game_state.board[x as usize][y as usize] = None;
+                                // If the board value is set to None, check if the position was already in the invalid_positions
+                                // If so, remove it
+                                game_state.invalid_positions.retain(|&(xi, yi, _)| xi != x || yi != y);
                             }
                         },
                         _ => {}
@@ -188,17 +201,36 @@ fn process_events(game_state: &mut GameState, event_pump: &mut sdl2::EventPump) 
 
                     // Check if the number entered is valid TODO: Fix this
                     if game_state.board_initialized {
+                        println!("Checking if move is valid");
                         if let Some(val) = game_state.board[x as usize][y as usize] {
+                            // Check if the coordinates are already in the invalid_positions
+                            let mut index = None;
+                            for (i, &(xi, yi, _)) in game_state.invalid_positions.iter().enumerate() {
+                                if xi == x && yi == y {
+                                    index = Some(i);
+                                    break;
+                                }
+                            }
+
+                            // If the coordinates are in the invalid_positions, check if the value is different.
+                            // If it is, remove the tuple
+                            if let Some(i) = index {
+                                if game_state.invalid_positions[i].2 != val {
+                                    game_state.invalid_positions.remove(i);
+                                }
+                            }
+
+                            // Check if the move is valid. If it's not, add it to the invalid_positions
                             if !game_state.is_valid_move(&game_state.board, x as usize, y as usize, val) {
                                 println!("Invalid move!");
-                                game_state.invalid_positions.push((x, y));
+                                game_state.invalid_positions.push((x, y, val));
                             }
                         }
-                    }
+                    }                  
 
                     // Check if board is complete after enteirng a number
                     if game_state.board == game_state.solved_board {
-                        println!("You solved the puzzle!");
+                        println!(" You solved the puzzle!");
                         game_state.selected_square = None;
                         game_state.board = vec![vec![None; 9]; 9];
                         game_state.initial_board = vec![vec![None; 9]; 9];
@@ -256,12 +288,15 @@ fn draw_board(game_state: &GameState, mut canvas: &mut sdl2::render::Canvas<sdl2
 
     if game_state.board_initialized {
         // Draw invalid positions
-        for (x, y) in &game_state.invalid_positions {
+        for (x, y, _val) in &game_state.invalid_positions {
             let rect_x = y * 128 + 50;
             let rect_y = x * 128 + 50;
-            let rect = Rect::new(rect_x as i32, rect_y as i32, 126, 126);
-            canvas.set_draw_color(Color::RGB(255, 0, 0));
-            canvas.draw_rect(rect)?;
+            let invalid_rect = Rect::new(rect_x + 1, rect_y + 1, 126, 126);
+            let board_rect = Rect::new(rect_x + 4, rect_y + 4, 119, 119);
+            canvas.set_draw_color(Color::RGB(190, 0, 0));
+            canvas.fill_rect(invalid_rect)?;
+            canvas.set_draw_color(Color::RGB(245, 242, 232));
+            canvas.fill_rect(board_rect)?;
         }
 
         // Draw the numbers
