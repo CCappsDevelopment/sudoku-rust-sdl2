@@ -15,9 +15,11 @@ struct GameState {
     selected_square: Option<(i32, i32)>,
     new_puzzle_button_pressed: bool,
     solve_button_pressed: bool,
+    candidate_button_pressed: bool,
     board: Vec<Vec<Option<i32>>>,
     initial_board: Vec<Vec<Option<i32>>>,
     solved_board: Vec<Vec<Option<i32>>>,
+    candidates: Vec<Vec<Option<Vec<i32>>>>,
     board_initialized: bool,
     puzzle_solved: bool,
     difficulty: board_generator::BoardDifficulty,
@@ -30,9 +32,11 @@ impl GameState {
             selected_square: None,
             new_puzzle_button_pressed: false,
             solve_button_pressed: false,
+            candidate_button_pressed: false,
             board: vec![vec![None; 9]; 9],
             initial_board: vec![vec![None; 9]; 9],
             solved_board: vec![vec![None; 9]; 9],
+            candidates: vec![vec![None; 9]; 9],
             board_initialized: false,
             puzzle_solved: false,
             difficulty: board_generator::BoardDifficulty::Medium,
@@ -128,11 +132,14 @@ fn process_events(game_state: &mut GameState, event_pump: &mut sdl2::EventPump) 
                 } 
 
                 // Check if the new game button is pressed
-                if x >= 60 && x <= 460 && y >= 1225 && y <= 1315 {
+                if x >= 60 && x <= 390 && y >= 1225 && y <= 1315 {
                     game_state.new_puzzle_button_pressed = true;
                 }
                 // Check if the solve button is pressed
-                if x >= 786 && x <= 1186 && y >= 1225 && y <= 1315 {
+                if x >= 460 && x <= 790 && y >= 1225 && y <= 1315 {
+                    game_state.candidate_button_pressed = !game_state.candidate_button_pressed;
+                }
+                if x >= 860 && x <= 1190 && y >= 1225 && y <= 1315 {
                     game_state.solve_button_pressed = true;
                 }
                 // Check if one of the difficulty buttons is pressed
@@ -179,15 +186,15 @@ fn process_events(game_state: &mut GameState, event_pump: &mut sdl2::EventPump) 
                 // Check if the key pressed is a number
                 if let Some((x, y)) = game_state.selected_square {
                     match keycode {
-                        Keycode::Num1 | Keycode::Kp1 =>  game_state.board[x as usize][y as usize] = Some(1),
-                        Keycode::Num2 | Keycode::Kp2 =>  game_state.board[x as usize][y as usize] = Some(2),
-                        Keycode::Num3 | Keycode::Kp3 =>  game_state.board[x as usize][y as usize] = Some(3),
-                        Keycode::Num4 | Keycode::Kp4 =>  game_state.board[x as usize][y as usize] = Some(4),
-                        Keycode::Num5 | Keycode::Kp5 =>  game_state.board[x as usize][y as usize] = Some(5),
-                        Keycode::Num6 | Keycode::Kp6 =>  game_state.board[x as usize][y as usize] = Some(6),
-                        Keycode::Num7 | Keycode::Kp7 =>  game_state.board[x as usize][y as usize] = Some(7),
-                        Keycode::Num8 | Keycode::Kp8 =>  game_state.board[x as usize][y as usize] = Some(8),
-                        Keycode::Num9 | Keycode::Kp9 =>  game_state.board[x as usize][y as usize] = Some(9),
+                        Keycode::Num1 | Keycode::Kp1 => handle_number_entry(game_state, x as usize, y as usize, 1),
+                        Keycode::Num2 | Keycode::Kp2 => handle_number_entry(game_state, x as usize, y as usize, 2),
+                        Keycode::Num3 | Keycode::Kp3 => handle_number_entry(game_state, x as usize, y as usize, 3),
+                        Keycode::Num4 | Keycode::Kp4 => handle_number_entry(game_state, x as usize, y as usize, 4),
+                        Keycode::Num5 | Keycode::Kp5 => handle_number_entry(game_state, x as usize, y as usize, 5),
+                        Keycode::Num6 | Keycode::Kp6 => handle_number_entry(game_state, x as usize, y as usize, 6),
+                        Keycode::Num7 | Keycode::Kp7 => handle_number_entry(game_state, x as usize, y as usize, 7),
+                        Keycode::Num8 | Keycode::Kp8 => handle_number_entry(game_state, x as usize, y as usize, 8),
+                        Keycode::Num9 | Keycode::Kp9 => handle_number_entry(game_state, x as usize, y as usize, 9),
                         Keycode::Backspace | Keycode::Delete => {
                             if game_state.board_initialized {
                                 game_state.board[x as usize][y as usize] = None;
@@ -247,7 +254,29 @@ fn process_events(game_state: &mut GameState, event_pump: &mut sdl2::EventPump) 
     return true;
 }
 
-fn draw_board(game_state: &GameState, mut canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, font: (&sdl2::ttf::Font, &sdl2::ttf::Font, &sdl2::ttf::Font)) -> Result<(), String>{
+fn handle_number_entry(game_state: &mut GameState, x: usize, y: usize, val: i32) {
+    if game_state.candidate_button_pressed {
+        // if the number is already in the candidates, remove it otherwise add it to Vector
+        if let Some(candidates) = &mut game_state.candidates[x][y] {
+            if candidates.contains(&val) {
+                candidates.retain(|&x| x != val);
+            }
+            else {
+                candidates.push(val);
+            }
+        }
+        else {
+            game_state.candidates[x][y] = Some(vec![val]);
+        }
+    }
+    else {
+        game_state.candidates[x][y] = None;
+        game_state.board[x][y] = Some(val);
+    }
+    println!("candidates:{:?}", game_state.candidates);
+}
+
+fn draw_board(game_state: &GameState, mut canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, fonts: Vec<&sdl2::ttf::Font>) -> Result<(), String>{
     // Set the background color and clear the screen
     canvas.set_draw_color(Color::RGB(245, 242, 232));
     canvas.clear();
@@ -299,48 +328,93 @@ fn draw_board(game_state: &GameState, mut canvas: &mut sdl2::render::Canvas<sdl2
             canvas.fill_rect(board_rect)?;
         }
 
-        // Draw the numbers
-        for i in 0..9 {
-            for j in 0..9 {
-                let x = j * 128 + 50;
-                let y = i * 128 + 50;
-                if let Some(val) = game_state.board[i as usize][j as usize] {
-                    let surface = font.1.render(&val.to_string())
-                        .blended(Color::RGB(0, 0, 0))
-                        .map_err(|e| e.to_string())?;
-                    let texture_creator = canvas.texture_creator();
-                    let texture = texture_creator.create_texture_from_surface(&surface)
-                        .map_err(|e| e.to_string())?;
-                    let TextureQuery { width, height, .. } = texture.query();
-                    let target = Rect::new(
-                        x as i32 + (128 - width as i32) / 2,
-                        y as i32 + (128 - height as i32) / 2,
-                        width,
-                        height,
-                    );
-                    canvas.copy(&texture, None, Some(target))?;
-                }
-            }
-        } 
+        draw_numbers(&game_state, &mut canvas, &fonts)?;
     }  
     else if !game_state.board_initialized && game_state.puzzle_solved {
-        display_gameover_message(&mut canvas, &font.2)?;
+        display_gameover_message(&mut canvas, &fonts[2])?;
     }         
 
     // Draw the buttons
-    draw_button(game_state, &mut canvas, &font.0, 75, 1250, 370, 50, "New Puzzle", Some(game_state.new_puzzle_button_pressed), None)?;
-    draw_button(game_state, &mut canvas, &font.0, 75 + (128 * 3) + 342, 1250, 370, 50, "Solve", Some(game_state.solve_button_pressed), None)?;
-    draw_button(game_state, &mut canvas, &font.0, 25, 1375, 200, 25, "Beginner", None, Some(board_generator::BoardDifficulty::Beginner))?;
-    draw_button(game_state, &mut canvas, &font.0, 25 + 200 + 50, 1375, 200, 25, "Easy", None,Some(board_generator::BoardDifficulty::Easy))?;
-    draw_button(game_state, &mut canvas, &font.0, 25 + (200 * 2) + 100, 1375, 200, 25, "Medium", None, Some(board_generator::BoardDifficulty::Medium))?;
-    draw_button(game_state, &mut canvas, &font.0, 25 + (200 * 3) + 150, 1375, 200, 25, "Hard", None, Some(board_generator::BoardDifficulty::Hard))?;
-    draw_button(game_state, &mut canvas, &font.0, 25 + (200 * 4) + 200, 1375, 200, 25, "Expert", None, Some(board_generator::BoardDifficulty::Expert))?;
+    draw_button(game_state, &mut canvas, &fonts[0], 75, 1250, 300, 50, "New Puzzle", Some(game_state.new_puzzle_button_pressed), None)?;
+    draw_button(game_state, &mut canvas, &fonts[0], 475, 1250, 300, 50, "Candidate Mode", Some(game_state.candidate_button_pressed), None)?;
+    draw_button(game_state, &mut canvas, &fonts[0], 875, 1250, 300, 50, "Solve", Some(game_state.solve_button_pressed), None)?;
+    draw_button(game_state, &mut canvas, &fonts[0], 25, 1375, 200, 25, "Beginner", None, Some(board_generator::BoardDifficulty::Beginner))?;
+    draw_button(game_state, &mut canvas, &fonts[0], 25 + 200 + 50, 1375, 200, 25, "Easy", None,Some(board_generator::BoardDifficulty::Easy))?;
+    draw_button(game_state, &mut canvas, &fonts[0], 25 + (200 * 2) + 100, 1375, 200, 25, "Medium", None, Some(board_generator::BoardDifficulty::Medium))?;
+    draw_button(game_state, &mut canvas, &fonts[0], 25 + (200 * 3) + 150, 1375, 200, 25, "Hard", None, Some(board_generator::BoardDifficulty::Hard))?;
+    draw_button(game_state, &mut canvas, &fonts[0], 25 + (200 * 4) + 200, 1375, 200, 25, "Expert", None, Some(board_generator::BoardDifficulty::Expert))?;
 
     // Present the canvas
     canvas.present();
 
     Ok(())
 }
+
+fn draw_numbers(game_state: &GameState, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, fonts: &Vec<&sdl2::ttf::Font>) -> Result<(), String> {
+    // Draw the numbers
+    for i in 0..9 {
+        for j in 0..9 {
+            let x = j * 128 + 50;
+            let y = i * 128 + 50;
+            
+            let texture_creator = canvas.texture_creator();
+
+            if let Some(candidates) = &game_state.candidates[i as usize][j as usize] {
+                if !candidates.is_empty() {
+                    let mut sorted_candidates = candidates.clone();
+                    sorted_candidates.sort();
+
+                    for (idx, &val) in sorted_candidates.iter().enumerate() {
+                        let x_offset = (idx % 3) * 42; // 42 is approximately (128/3), adjust to suit
+                        let y_offset = (idx / 3) * 42; 
+
+                        let surface = fonts[3].render(&val.to_string())
+                            .blended(Color::RGB(0, 0, 0))
+                            .map_err(|e| e.to_string())?;
+                        
+                        let texture = texture_creator.create_texture_from_surface(&surface)
+                            .map_err(|e| e.to_string())?;
+                        
+                        let TextureQuery { width, height, .. } = texture.query();
+
+                        let target = Rect::new(
+                            x as i32 + x_offset as i32 + (42 - width as i32) / 2,
+                            y as i32 + y_offset as i32 + (42 - height as i32) / 2,
+                            width,
+                            height,
+                        );
+
+                        canvas.copy(&texture, None, Some(target))?;
+                    }
+                    continue;
+                }
+            }
+
+            if let Some(val) = game_state.board[i as usize][j as usize] {
+                let surface = fonts[1].render(&val.to_string())
+                    .blended(Color::RGB(0, 0, 0))
+                    .map_err(|e| e.to_string())?;
+
+                let texture = texture_creator.create_texture_from_surface(&surface)
+                    .map_err(|e| e.to_string())?;
+                
+                let TextureQuery { width, height, .. } = texture.query();
+
+                let target = Rect::new(
+                    x as i32 + (128 - width as i32) / 2,
+                    y as i32 + (128 - height as i32) / 2,
+                    width,
+                    height,
+                );
+
+                canvas.copy(&texture, None, Some(target))?;
+            }
+        }
+    } 
+
+    Ok(())
+}
+
 
 fn draw_button(
     game_state: &GameState,
@@ -447,7 +521,14 @@ fn main() -> Result<(), String> {
     let button_font = ttf_context.load_font("./assets/fonts/LibreFranklin-Medium.ttf", 36)?;
     let numbers_font = ttf_context.load_font("./assets/fonts/LibreFranklin-Bold.ttf", 44)?;
     let message_font = ttf_context.load_font("./assets/fonts/LibreFranklin-Bold.ttf", 72)?;
+    let candidates_font = ttf_context.load_font("./assets/fonts/LibreFranklin-Medium.ttf", 24)?;
 
+    let mut fonts: Vec<&sdl2::ttf::Font> = Vec::new();
+    fonts.push(&button_font);
+    fonts.push(&numbers_font);
+    fonts.push(&message_font);
+    fonts.push(&candidates_font);
+    
     let mut game_state = GameState::new();
 
     'running: loop {
@@ -455,7 +536,7 @@ fn main() -> Result<(), String> {
             break 'running;
         }
 
-        let _ = draw_board(&game_state, &mut canvas, (&button_font, &numbers_font, &message_font));
+        let _ = draw_board(&game_state, &mut canvas, fonts.clone());
 
         // Limit the frame rate to 60 FPS
         std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
