@@ -101,6 +101,7 @@ fn init_sdl2() -> Result<(sdl2::EventPump, sdl2::render::Canvas<sdl2::video::Win
 
     let window = video_subsystem.window("Sudoku", window_width, window_height)
         .position_centered()
+        .resizable()
         .build()
         .map_err(|e| e.to_string())?;
 
@@ -111,7 +112,7 @@ fn init_sdl2() -> Result<(sdl2::EventPump, sdl2::render::Canvas<sdl2::video::Win
     Ok((event_pump, canvas))
 }
 
-fn process_events(game_state: &mut GameState, event_pump: &mut sdl2::EventPump) -> bool {
+fn process_events(game_state: &mut GameState, event_pump: &mut sdl2::EventPump, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>) -> bool {
     // I leave this part to you, as it's a long piece of code
     for event in event_pump.poll_iter() {
         match event {
@@ -119,6 +120,10 @@ fn process_events(game_state: &mut GameState, event_pump: &mut sdl2::EventPump) 
             Event::Quit {..} |
             Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                 return false;
+            },
+            Event::Window { win_event: sdl2::event::WindowEvent::Resized(w, h), .. } => {
+                let scale = w as f32 / h as f32;
+                canvas.set_scale(scale, scale).unwrap();
             },
             // If the user clicks on a square, select that square
             Event::MouseButtonDown { mouse_btn: MouseButton::Left, x, y, .. } => {
@@ -532,7 +537,7 @@ fn main() -> Result<(), String> {
     let mut game_state = GameState::new();
 
     'running: loop {
-        if !process_events(&mut game_state, &mut event_pump) {
+        if !process_events(&mut game_state, &mut event_pump, &mut canvas) {
             break 'running;
         }
 
