@@ -102,13 +102,16 @@ fn init_sdl2() -> Result<(sdl2::EventPump, sdl2::render::Canvas<sdl2::video::Win
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
 
-    let window_width: u32 = 9 * 64 + 2 * 25 + 8;
-    let window_height: u32 = 9 * 64 + 50 + 125 + 8;
+    // Get the current display mode so we can determine screen dimensions
+    let display_mode = video_subsystem.current_display_mode(0)?;
+
+    // Calculate window dimensions as percentages of screen dimensions
+    let window_width: u32 = (display_mode.w as f32 * 0.45) as u32;
+    let window_height: u32 = (display_mode.h as f32 * 0.85) as u32;
 
     let window = video_subsystem
         .window("Sudoku", window_width, window_height)
         .position_centered()
-        //.resizable()
         .build()
         .map_err(|e| e.to_string())?;
 
@@ -118,6 +121,7 @@ fn init_sdl2() -> Result<(sdl2::EventPump, sdl2::render::Canvas<sdl2::video::Win
 
     Ok((event_pump, canvas))
 }
+
 
 fn process_events(
     game_state: &mut GameState,
