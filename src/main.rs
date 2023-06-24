@@ -6,7 +6,6 @@ use sdl2::mouse::MouseButton;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::TextureQuery;
-use std::cell;
 use std::time::Duration;
 
 mod board_generator;
@@ -342,7 +341,7 @@ fn draw_board(
     mut canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
     fonts: Vec<&sdl2::ttf::Font>,
 ) -> Result<(), String> {
-    let (window_width, window_height) = canvas.window().size();
+    let (window_width, _window_height) = canvas.window().size();
     let grid_size = (window_width as f32 * 0.95) as u32;  // f32 used to handle fractional results
     let cell_size = grid_size / 9;
     let offset = ((window_width - grid_size) / 2) as i32;
@@ -489,107 +488,68 @@ fn draw_buttons(
     mut canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
     fonts: Vec<&sdl2::ttf::Font>
 ) -> Result<(), String> {
-    let (window_width, window_height) = canvas.window().size();
+    let (window_width, _window_height) = canvas.window().size();
     let grid_size = (window_width as f32 * 0.95) as u32;  // f32 used to handle fractional results
     let cell_size = grid_size / 9;
     let offset = ((window_width - grid_size) / 2) as i32;
 
-    draw_button(
-        game_state,
-        &mut canvas,
-        &fonts[0],
-        grid_size as i32 / 10 - cell_size as i32 / 3,
-        grid_size as i32 + cell_size as i32 - offset,
-        cell_size * 2 - offset as u32,
-        cell_size / 4,
-        "New Puzzle",
+    let button_width = cell_size * 2 - offset as u32;
+    let button_height = cell_size / 10;
+    let y_level_1 = (grid_size + cell_size) as i32 - offset;
+    let y_level_2 = (1.25 * cell_size as f32) as i32 + grid_size as i32 + (2 * offset);
+
+    let number_of_buttons_level_1 = 3;
+    let number_of_buttons_level_2 = 5;
+    let spacing_level_1 = (window_width as i32 - 2 * offset) / number_of_buttons_level_1;
+    let spacing_level_2 = (window_width as i32 - 2 * offset) / number_of_buttons_level_2;
+
+    let button_names_level_1 = vec!["New Puzzle", "Candidate", "Solve"];
+    let button_states_level_1 = vec![
         Some(game_state.new_puzzle_button_pressed),
-        None,
-    )?;
-    draw_button(
-        game_state,
-        &mut canvas,
-        &fonts[0],
-        4 * grid_size as i32 / 10 - cell_size as i32 / 3,
-        grid_size as i32 + cell_size as i32 - offset,
-        cell_size * 2 - offset as u32,
-        cell_size / 4,
-        "Candidate",
         Some(game_state.candidate_button_pressed),
-        None,
-    )?;
-    draw_button(
-        game_state,
-        &mut canvas,
-        &fonts[0],
-        8 * grid_size as i32 / 10 - cell_size as i32 / 3,
-        grid_size as i32 + cell_size as i32 - offset,
-        cell_size * 2 - offset as u32,
-        cell_size / 4,
-        "Solve",
         Some(game_state.solve_button_pressed),
-        None,
-    )?;
-    draw_button(
-        game_state,
-        &mut canvas,
-        &fonts[0],
-        25,
-        1375,
-        200,
-        25,
-        "Beginner",
-        None,
+    ];
+
+    for (index, (button_name, button_state)) in button_names_level_1.iter().zip(button_states_level_1).enumerate() {
+        let x = spacing_level_1 * index as i32 + offset;
+        draw_button(
+            game_state,
+            &mut canvas,
+            &fonts[0],
+            x,
+            y_level_1,
+            button_width,
+            button_height,
+            button_name,
+            button_state,
+            None,
+        )?;
+    }
+
+    let button_names_level_2 = vec!["Beginner", "Easy", "Medium", "Hard", "Expert"];
+    let button_difficulties_level_2 = vec![
         Some(board_generator::BoardDifficulty::Beginner),
-    )?;
-    draw_button(
-        game_state,
-        &mut canvas,
-        &fonts[0],
-        25 + 200 + 50,
-        1375,
-        200,
-        25,
-        "Easy",
-        None,
         Some(board_generator::BoardDifficulty::Easy),
-    )?;
-    draw_button(
-        game_state,
-        &mut canvas,
-        &fonts[0],
-        25 + 200 * 2 + 100,
-        1375,
-        200,
-        25,
-        "Medium",
-        None,
         Some(board_generator::BoardDifficulty::Medium),
-    )?;
-    draw_button(
-        game_state,
-        &mut canvas,
-        &fonts[0],
-        25 + 200 * 3 + 150,
-        1375,
-        200,
-        25,
-        "Hard",
-        None,
         Some(board_generator::BoardDifficulty::Hard),
-    )?;
-    draw_button(
-        game_state,
-        &mut canvas,
-        &fonts[0],
-        25 + 200 * 4 + 200,
-        1375,
-        200,
-        25,
-        "Expert",
-        None,
         Some(board_generator::BoardDifficulty::Expert),
-    )?;
+    ];
+
+    for (index, (button_name, button_difficulty)) in button_names_level_2.iter().zip(button_difficulties_level_2).enumerate() {
+        let x = spacing_level_2 * index as i32 + offset;
+        draw_button(
+            game_state,
+            &mut canvas,
+            &fonts[0],
+            x,
+            y_level_2,
+            button_width,
+            button_height,
+            button_name,
+            None,
+            button_difficulty,
+        )?;
+    }
 
     Ok(())
 }
