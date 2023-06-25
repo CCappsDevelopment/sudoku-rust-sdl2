@@ -46,7 +46,7 @@ impl GuiData {
         let number_of_buttons_level_1 = 3;
         let number_of_buttons_level_2 = 5;
         let spacing_level_1 = ((window_width as i32) - 2 * offset) / number_of_buttons_level_1;
-        let spacing_level_2 = ((window_width as i32) - 2 * offset) / number_of_buttons_level_2;
+        let spacing_level_2 = ((window_width as i32) - 2 * offset) / number_of_buttons_level_2 + 8;
 
         let button_names_level_1 = vec!["New Puzzle", "Candidate", "Solve"];
         let button_states_level_1 = vec![
@@ -64,7 +64,7 @@ impl GuiData {
             Some(board_generator::BoardDifficulty::Expert)
         ];
 
-        let font_size_buttons = (button_height * 3) as u16;
+        let font_size_buttons = 24;
         let font_size_numbers = (cell_size / 2) as u16;
         let font_size_message = (cell_size / 2) as u16;
         let font_size_candidates = (cell_size / 4) as u16;
