@@ -25,6 +25,10 @@ struct GuiData {
     button_states_level_1: Vec<Option<bool>>,
     button_names_level_2: Vec<&'static str>,
     button_difficulties_level_2: Vec<Option<board_generator::BoardDifficulty>>,
+    font_size_buttons: u16,
+    font_size_numbers: u16,
+    font_size_message: u16,
+    font_size_candidates: u16,
 }
 
 impl GuiData {
@@ -60,6 +64,11 @@ impl GuiData {
             Some(board_generator::BoardDifficulty::Expert)
         ];
 
+        let font_size_buttons = (button_height * 3) as u16;
+        let font_size_numbers = (cell_size / 2) as u16;
+        let font_size_message = (cell_size / 2) as u16;
+        let font_size_candidates = (cell_size / 4) as u16;
+
         GuiData {
             grid_size,
             cell_size,
@@ -75,6 +84,10 @@ impl GuiData {
             button_states_level_1,
             button_names_level_2,
             button_difficulties_level_2,
+            font_size_buttons,
+            font_size_numbers,
+            font_size_message,
+            font_size_candidates
         }
     }
 }
@@ -503,7 +516,7 @@ fn draw_board(
         // Draw the numbers
         draw_numbers(&game_state, &mut canvas, &fonts, &gui_data)?;
     } else if !game_state.board_initialized && game_state.puzzle_solved {
-        display_gameover_message(&mut canvas, &fonts[2])?;
+        display_gameover_message(&mut canvas, &fonts[2], &gui_data)?;
     }
     // Draw the buttons
     draw_buttons(&game_state, &mut canvas, fonts, gui_data)?;
@@ -706,7 +719,8 @@ fn draw_button(
 
 fn display_gameover_message(
     canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
-    font: &sdl2::ttf::Font
+    font: &sdl2::ttf::Font,
+    gui_data: &GuiData
 ) -> Result<(), String> {
     // Render and draw the game over message
     let surface = font
@@ -718,8 +732,8 @@ fn display_gameover_message(
     let texture = texture_creator.create_texture_from_surface(&surface).map_err(|e| e.to_string())?;
     let TextureQuery { width: texture_width, height: texture_height, .. } = texture.query();
 
-    let x = 50 + (((128 * 9) as i32) - (texture_width as i32)) / 2;
-    let y = 50 + (((128 * 9) as i32) - (texture_height as i32)) / 2;
+    let x = gui_data.offset + (((gui_data.cell_size * 9) as i32) - (texture_width as i32)) / 2;
+    let y = gui_data.offset + (((gui_data.cell_size * 9) as i32) - (texture_height as i32)) / 2;
     let x_offset: u32 = 30;
     let y_offset: u32 = 30;
     let target = Rect::new(x, y, texture_width, texture_height);
@@ -749,21 +763,21 @@ fn display_gameover_message(
 fn main() -> Result<(), String> {
     let (mut event_pump, mut canvas) = init_sdl2()?;
 
+    let mut game_state = GameState::new();
+    let (window_width, window_height) = canvas.window().size();
+    let gui_data = GuiData::new(&game_state, window_width, window_height);
+
     let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
-    let button_font = ttf_context.load_font("./assets/fonts/LibreFranklin-Medium.ttf", 28)?;
-    let numbers_font = ttf_context.load_font("./assets/fonts/LibreFranklin-Bold.ttf", 44)?;
-    let message_font = ttf_context.load_font("./assets/fonts/LibreFranklin-Bold.ttf", 72)?;
-    let candidates_font = ttf_context.load_font("./assets/fonts/LibreFranklin-Medium.ttf", 24)?;
+    let button_font = ttf_context.load_font("./assets/fonts/LibreFranklin-Medium.ttf", gui_data.font_size_buttons)?;
+    let numbers_font = ttf_context.load_font("./assets/fonts/LibreFranklin-Bold.ttf", gui_data.font_size_numbers)?;
+    let message_font = ttf_context.load_font("./assets/fonts/LibreFranklin-Bold.ttf", gui_data.font_size_message)?;
+    let candidates_font = ttf_context.load_font("./assets/fonts/LibreFranklin-Medium.ttf", gui_data.font_size_candidates)?;
 
     let mut fonts: Vec<&sdl2::ttf::Font> = Vec::new();
     fonts.push(&button_font);
     fonts.push(&numbers_font);
     fonts.push(&message_font);
     fonts.push(&candidates_font);
-
-    let mut game_state = GameState::new();
-    let (window_width, window_height) = canvas.window().size();
-    let gui_data = GuiData::new(&game_state, window_width, window_height);
 
     'running: loop {
         if !process_events(&mut game_state, &mut event_pump, &mut canvas, &gui_data) {
