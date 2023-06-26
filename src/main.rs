@@ -11,7 +11,6 @@ use std::time::Duration;
 mod board_generator;
 
 struct GuiData {
-    grid_size: u32,
     cell_size: u32,
     offset: i32,
     button_width_level_1: u32,
@@ -21,10 +20,6 @@ struct GuiData {
     y_level_2: i32,
     spacing_level_1: i32,
     spacing_level_2: i32,
-    button_names_level_1: Vec<&'static str>,
-    button_states_level_1: Vec<Option<bool>>,
-    button_names_level_2: Vec<&'static str>,
-    button_difficulties_level_2: Vec<Option<board_generator::BoardDifficulty>>,
     font_size_buttons: u16,
     font_size_numbers: u16,
     font_size_message: u16,
@@ -32,7 +27,7 @@ struct GuiData {
 }
 
 impl GuiData {
-    fn new(game_state: &GameState, window_width: u32, window_height: u32) -> Self {
+    fn new(window_width: u32, _window_height: u32) -> Self {
         let grid_size = ((window_width as f32) * 0.95) as u32; // f32 used to handle fractional results
         let cell_size = grid_size / 9;
         let offset = ((window_width - grid_size) / 2) as i32;
@@ -46,31 +41,14 @@ impl GuiData {
         let number_of_buttons_level_1 = 3;
         let number_of_buttons_level_2 = 5;
         let spacing_level_1 = ((window_width as i32) - 2 * offset) / number_of_buttons_level_1;
-        let spacing_level_2 = ((window_width as i32) - 2 * offset) / number_of_buttons_level_2 + 8;
+        let spacing_level_2 = ((window_width as i32) - 2 * offset) / number_of_buttons_level_2 + 4;
 
-        let button_names_level_1 = vec!["New Puzzle", "Candidate", "Solve"];
-        let button_states_level_1 = vec![
-            Some(game_state.new_puzzle_button_pressed),
-            Some(game_state.candidate_button_pressed),
-            Some(game_state.solve_button_pressed)
-        ];
-
-        let button_names_level_2 = vec!["Beginner", "Easy", "Medium", "Hard", "Expert"];
-        let button_difficulties_level_2 = vec![
-            Some(board_generator::BoardDifficulty::Beginner),
-            Some(board_generator::BoardDifficulty::Easy),
-            Some(board_generator::BoardDifficulty::Medium),
-            Some(board_generator::BoardDifficulty::Hard),
-            Some(board_generator::BoardDifficulty::Expert)
-        ];
-
-        let font_size_buttons = 24;
+        let font_size_buttons = 20;
         let font_size_numbers = (cell_size / 2) as u16;
         let font_size_message = (cell_size / 2) as u16;
         let font_size_candidates = (cell_size / 4) as u16;
 
         GuiData {
-            grid_size,
             cell_size,
             offset,
             button_width_level_1,
@@ -80,10 +58,6 @@ impl GuiData {
             y_level_2,
             spacing_level_1,
             spacing_level_2,
-            button_names_level_1,
-            button_states_level_1,
-            button_names_level_2,
-            button_difficulties_level_2,
             font_size_buttons,
             font_size_numbers,
             font_size_message,
@@ -144,13 +118,11 @@ impl GameState {
         val: i32
     ) -> bool {
         // Check if the value is already in the row
-        println!("row:{}, col:{}, val:{}", row, col, val);
         if board[row][col] == None {
             return true;
         }
 
         for i in 0..9 {
-            println!("board[{}][{}]:{:?}", row, i, board[row][i]);
             if board[row][i] == Some(val) && i != col {
                 print!("found match in row:{}", i);
                 return false;
@@ -227,20 +199,19 @@ fn process_events(
             }
             // If the user clicks on a square, select that square
             Event::MouseButtonDown { mouse_btn: MouseButton::Left, x, y, .. } => {
-                let row = ((y as i32) - gui_data.offset) / ((gui_data.cell_size as i32) + 2);
-                let col = ((x as i32) - gui_data.offset) / ((gui_data.cell_size as i32) + 2);
+                let row = (y as i32 - gui_data.offset) / gui_data.cell_size as i32;
+                let col = (x as i32 - gui_data.offset) / gui_data.cell_size as i32;
                 // Check if the square is within the board
-                if row >= 0 && row < 9 && col >= 0 && col < 9 {
-                    if
-                        game_state.board_initialized &&
-                        game_state.initial_board[row as usize][col as usize].is_none()
+                if row >= 0 && row < 9 && col >= 0 && col < 9 && x >= gui_data.offset && y >= gui_data.offset {
+                    if game_state.board_initialized &&
+                       game_state.initial_board[row as usize][col as usize].is_none()
                     {
                         game_state.selected_square = Some((row, col));
                     }
                 }
 
                 // Check if the one of the top row buttons are pressed
-                for index in 0..gui_data.button_states_level_1.len() {
+                for index in 0..3 {
                     let button_x_level_1 =
                         gui_data.spacing_level_1 * (index as i32) + 4 * gui_data.offset - 15;
                     if
@@ -268,7 +239,7 @@ fn process_events(
                     }
                 }
 
-                for index in 0..gui_data.button_difficulties_level_2.len() {
+                for index in 0..5 {
                     let button_x_level_2 =
                         gui_data.spacing_level_2 * (index as i32) + 2 * gui_data.offset - 15;
                     if
@@ -312,6 +283,7 @@ fn process_events(
                     game_state.board_initialized = true;
                     game_state.puzzle_solved = false;
                     game_state.invalid_positions = Vec::new();
+                    game_state.candidates = vec![vec![None; 9]; 9];
                 }
                 // Check if the solve button is pressed
                 if game_state.solve_button_pressed {
@@ -362,13 +334,17 @@ fn process_events(
                                     |&(xi, yi, _)| (xi != x || yi != y)
                                 );
                             }
+                            if game_state.candidate_button_pressed {
+                                if let Some(candidates) = &mut game_state.candidates[x as usize][y as usize] {
+                                    candidates.clear();
+                                }
+                            }
                         }
                         _ => {}
                     }
 
                     // Check if the number entered is valid TODO: Fix this
                     if game_state.board_initialized {
-                        println!("Checking if move is valid");
                         if let Some(val) = game_state.board[x as usize][y as usize] {
                             // Check if the coordinates are already in the invalid_positions
                             let mut index = None;
@@ -398,7 +374,6 @@ fn process_events(
                                     val
                                 )
                             {
-                                println!("Invalid move!");
                                 game_state.invalid_positions.push((x, y, val));
                             }
                         }
@@ -406,7 +381,6 @@ fn process_events(
 
                     // Check if board is complete after enteirng a number
                     if game_state.board == game_state.solved_board {
-                        println!(" You solved the puzzle!");
                         game_state.selected_square = None;
                         game_state.board = vec![vec![None; 9]; 9];
                         game_state.initial_board = vec![vec![None; 9]; 9];
@@ -439,7 +413,6 @@ fn handle_number_entry(game_state: &mut GameState, x: usize, y: usize, val: i32)
         game_state.candidates[x][y] = None;
         game_state.board[x][y] = Some(val);
     }
-    println!("candidates:{:?}", game_state.candidates);
 }
 
 fn draw_board(
@@ -611,9 +584,25 @@ fn draw_buttons(
     fonts: Vec<&sdl2::ttf::Font>,
     gui_data: &GuiData
 ) -> Result<(), String> {
-    for (index, (&button_name, &button_state)) in gui_data.button_names_level_1
+        let button_names_level_1 = vec!["New Puzzle", "Candidate", "Solve"];
+        let button_states_level_1 = vec![
+            Some(game_state.new_puzzle_button_pressed),
+            Some(game_state.candidate_button_pressed),
+            Some(game_state.solve_button_pressed)
+        ];
+
+        let button_names_level_2 = vec!["Beginner", "Easy", "Medium", "Hard", "Expert"];
+        let button_difficulties_level_2 = vec![
+            Some(board_generator::BoardDifficulty::Beginner),
+            Some(board_generator::BoardDifficulty::Easy),
+            Some(board_generator::BoardDifficulty::Medium),
+            Some(board_generator::BoardDifficulty::Hard),
+            Some(board_generator::BoardDifficulty::Expert)
+        ];
+
+    for (index, (button_name, button_state)) in button_names_level_1
         .iter()
-        .zip(&gui_data.button_states_level_1)
+        .zip(button_states_level_1)
         .enumerate() {
         let x = gui_data.spacing_level_1 * (index as i32) + 4 * gui_data.offset;
         draw_button(
@@ -630,9 +619,9 @@ fn draw_buttons(
         )?;
     }
 
-    for (index, (&button_name, &button_difficulty)) in gui_data.button_names_level_2
+    for (index, (button_name, button_difficulty)) in button_names_level_2
         .iter()
-        .zip(&gui_data.button_difficulties_level_2)
+        .zip(button_difficulties_level_2)
         .enumerate() {
         let x = gui_data.spacing_level_2 * (index as i32) + 2 * gui_data.offset;
         draw_button(
@@ -765,7 +754,7 @@ fn main() -> Result<(), String> {
 
     let mut game_state = GameState::new();
     let (window_width, window_height) = canvas.window().size();
-    let gui_data = GuiData::new(&game_state, window_width, window_height);
+    let gui_data = GuiData::new(window_width, window_height);
 
     let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
     let button_font = ttf_context.load_font("./assets/fonts/LibreFranklin-Medium.ttf", gui_data.font_size_buttons)?;
