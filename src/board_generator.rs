@@ -30,9 +30,6 @@ impl BoardGenerator {
         loop {
             let mut board_raw: Vec<Vec<Option<i32>>> = vec![vec![None; 9]; 9];
             if self.fill_board(&mut board_raw, 0) {
-                println!("Solved Sudoku (attempts: {}):", attempts);
-                println!("{}", self.format_board(&board_raw));
-                println!();
                 self.solved_board = Some(board_raw.clone());
     
                 let removals = match self.difficulty {
@@ -53,13 +50,9 @@ impl BoardGenerator {
                         }
                     }
                 }
-    
-                println!("Playable Sudoku:");
-                println!("{}", self.format_board(&board_raw));
                 return board_raw;
             } else {
                 attempts += 1;
-                println!("Attempt {} failed, restarting...", attempts);
             }
         }
     }
