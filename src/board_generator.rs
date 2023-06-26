@@ -57,7 +57,7 @@ impl BoardGenerator {
         }
     }
     
-    pub fn format_board(&self, board: &Vec<Vec<Option<i32>>>) -> String {
+    pub fn _format_board(&self, board: &Vec<Vec<Option<i32>>>) -> String {
         board.iter()
             .map(|row| {
                 row.iter()

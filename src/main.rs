@@ -160,7 +160,7 @@ fn init_sdl2() -> Result<(sdl2::EventPump, sdl2::render::Canvas<sdl2::video::Win
 
     // Calculate window dimensions as percentages of screen dimensions
     let window_width: u32 = ((display_mode.w as f32) * 0.45) as u32;
-    let window_height: u32 = ((display_mode.h as f32) * 0.85) as u32;
+    let window_height: u32 = ((display_mode.h as f32) * 0.95) as u32;
 
     let window = video_subsystem
         .window("Sudoku", window_width, window_height)
