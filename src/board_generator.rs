@@ -25,8 +25,7 @@ impl BoardGenerator {
 
     pub fn generate_sudoku(&mut self) -> Vec<Vec<Option<i32>>> {
         let mut rng = rand::thread_rng();
-        let mut attempts = 0;
-    
+        
         loop {
             let mut board_raw: Vec<Vec<Option<i32>>> = vec![vec![None; 9]; 9];
             if self.fill_board(&mut board_raw, 0) {
@@ -51,8 +50,6 @@ impl BoardGenerator {
                     }
                 }
                 return board_raw;
-            } else {
-                attempts += 1;
             }
         }
     }
